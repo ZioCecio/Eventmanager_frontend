@@ -4,7 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localstorage/flutter_localstorage.dart';
 import 'package:http/http.dart' as http;
 
-class Signup extends StatelessWidget {
+import './MainScreen.dart';
+
+class Signup extends StatefulWidget {
+  @override
+  _SignupState createState() => _SignupState();
+}
+
+class _SignupState extends State<Signup> {
   static final GlobalKey<ScaffoldState> _scaffoldKey =
       new GlobalKey<ScaffoldState>();
   final LocalStorage localStorage = new LocalStorage();
@@ -13,6 +20,8 @@ class Signup extends StatelessWidget {
   static final passwordController = TextEditingController();
   static final nameController = TextEditingController();
   static final surnameController = TextEditingController();
+
+  bool disabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +84,11 @@ class Signup extends StatelessWidget {
           color: Colors.blueAccent,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          onPressed: () async {
+          onPressed: disabled ? () {} : () async {
+            setState(() {
+             disabled = true; 
+            });
+
             final String url =
                 'https://eventmanager-374c0.firebaseapp.com/signup';
 
@@ -92,32 +105,37 @@ class Signup extends StatelessWidget {
             };
 
             var response = await http.post(url,
-                headers: {"Content-Type": "application/json"},
+                headers: {'Content-Type': 'application/json'},
                 body: json.encode(data));
 
-            print(response.statusCode);
-            print(response.body);
+            setState(() {
+             disabled = false; 
+            });
 
             if (response.statusCode == 400) {
               return _scaffoldKey.currentState.showSnackBar(SnackBar(
-                  content: Text("Dati non validi."),
+                  content: Text('Dati non validi.'),
                   duration: Duration(seconds: 1)));
             }
 
             if (response.statusCode == 422) {
               return _scaffoldKey.currentState.showSnackBar(SnackBar(
-                  content: Text("E-mail già in uso."),
+                  content: Text('E-mail già in uso.'),
                   duration: Duration(seconds: 1)));
             }
 
             try {
-              localStorage.setItem("email", email);
-              localStorage.setItem("password", password);
+              localStorage.setItem('email', email);
+              localStorage.setItem('password', password);
             } catch (error) {
               print(error);
             }
+
+            Navigator.push(context, MaterialPageRoute(
+              builder: (context) => MainScreen(API_KEY: json.decode(response.body)['token'])
+            ));
           },
-          child: Text("SIGN UP"),
+          child: disabled ? SizedBox(width: MediaQuery.of(context).size.width * 0.07, height: MediaQuery.of(context).size.width * 0.07, child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white),),) : Text('SIGNUP'),
           textColor: Colors.white),
     );
 
@@ -137,7 +155,7 @@ class Signup extends StatelessWidget {
       flex: 1,
       child: GestureDetector(
         child: Center(
-          child: Text("Hai già un account? Accedi!"),
+          child: Text('Hai già un account? Accedi!'),
         ),
         onTap: () {
           Navigator.pop(context);

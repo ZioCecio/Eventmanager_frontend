@@ -1,11 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_localstorage/flutter_localstorage.dart';
 import 'package:http/http.dart' as http;
 
-import './Signup.dart';
 import './../Widgets/EventList.dart';
+import './NewEventForm.dart';
 
 class MainScreen extends StatefulWidget {
   final String API_KEY;
@@ -17,6 +16,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
   List events;
 
   _fetchEvents() async {
@@ -33,14 +33,62 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     this._fetchEvents();
+
+    _selectedIndex = 0;
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> widgets = <Widget> [
+      EventList(events: events, type: 'events'),
+      EventList(events: events, type: 'subscribedEvents'),
+      EventList(events: events, type: 'createdEvents')
+    ];
+
     return (
       Scaffold(
-        body: this.events == null ? CircularProgressIndicator() : EventList(events: events),
+        appBar: AppBar(
+          title: Text("EventManager"),
+        ),
+        body: this.events == null ? Center(child: CircularProgressIndicator()) : widgets[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          items: <BottomNavigationBarItem> [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.event),
+              title: Text("Eventi")
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.event),
+              title: Text("Iscrizioni")
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.event),
+              title: Text("Creati")
+            )
+          ],
+          onTap: (int index) {
+            setState(() {
+             this._selectedIndex = index;
+             this.events = null;
+             this._fetchEvents();
+            });
+          },
+          currentIndex: _selectedIndex,
+          selectedItemColor: Colors.blue,
+        ),
+        floatingActionButton: _selectedIndex == 2 ? FloatingActionButton(
+          heroTag: 'createButtons',
+          child: Icon(Icons.add),
+          backgroundColor: Colors.blue,
+          onPressed: () {Navigator.push(context, MaterialPageRoute(builder: (context) => NewEventForm(authorPaolo: this._onPress)));},
+        ) : null
       )
     );
+  }
+
+  _onPress () {
+    setState(() {
+     _fetchEvents(); 
+    });
   }
 }

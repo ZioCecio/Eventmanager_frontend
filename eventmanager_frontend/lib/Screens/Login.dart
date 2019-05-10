@@ -7,13 +7,22 @@ import 'package:http/http.dart' as http;
 import './Signup.dart';
 import './MainScreen.dart';
 
-class Login extends StatelessWidget {
+import './../Settings.dart';
+
+class Login extends StatefulWidget {
+  @override
+  _LoginState createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
   static final GlobalKey<ScaffoldState> _scaffoldKey =
       new GlobalKey<ScaffoldState>();
   final LocalStorage localStorage = new LocalStorage();
 
   static final emailController = TextEditingController();
   static final passwordController = TextEditingController();
+
+  bool disabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -52,8 +61,10 @@ class Login extends StatelessWidget {
           color: Colors.blueAccent,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          onPressed: () async {
-            //_scaffoldKey.currentState.showSnackBar(SnackBar(content: Text("LOL"), duration: Duration(seconds: 1)));
+          onPressed: disabled ? () {} : () async {
+            setState(() {
+             disabled = true; 
+            });
 
             final String url =
                 'https://eventmanager-374c0.firebaseapp.com/signin';
@@ -63,34 +74,52 @@ class Login extends StatelessWidget {
 
             var data = {'email': email, 'password': password};
 
-            var response = await http.post(url,
-                headers: {"Content-Type": "application/json"},
+            var response;
+            
+            try {
+              response = await http.post(url,
+                headers: {'Content-Type': 'application/json'},
                 body: json.encode(data));
+            }
+            catch(e) {
+              _scaffoldKey.currentState.showSnackBar(SnackBar(content: Text('${e.toString()}'), duration: Duration(seconds: 3)));
+            }
 
-            //_scaffoldKey.currentState.showSnackBar(SnackBar(content: Text("${response.statusCode}"), duration: Duration(seconds: 1)));
+            setState(() {
+             disabled = false; 
+            });
 
             if (response.statusCode == 400) {
               return _scaffoldKey.currentState.showSnackBar(SnackBar(
-                  content: Text("E-mail e/o password non valida!"),
+                  content: Text('E-mail e/o password non valida!'),
                   duration: Duration(seconds: 1)));
             }
 
             if (response.statusCode == 422) {
               return _scaffoldKey.currentState.showSnackBar(SnackBar(
-                  content: Text("E-mail e/o password errata!"),
+                  content: Text('E-mail e/o password errata!'),
                   duration: Duration(seconds: 1)));
             }
 
-            if(localStorage.getItem("email") == null) {
-              localStorage.setItem("email", email);
-              localStorage.setItem("password", password);
+            if(response.statusCode == 503) {
+              return _scaffoldKey.currentState.showSnackBar(SnackBar(
+                  content: Text('Servizio al momento non disponibile.'),
+                  duration: Duration(seconds: 1)));
             }
 
+            if(localStorage.getItem('email') == null) {
+              localStorage.setItem('email', email);
+              localStorage.setItem('password', password);
+            }
+
+            Settings.token = json.decode(response.body)['token'];
+            Settings.userId = json.decode(response.body)['id'];
+
             Navigator.push(context, MaterialPageRoute(
-              builder: (context) => MainScreen(API_KEY: json.decode(response.body)["token"])
+              builder: (context) => MainScreen(API_KEY: json.decode(response.body)['token'])
             ));
           },
-          child: Text("LOGIN"),
+          child: disabled ? SizedBox(width: MediaQuery.of(context).size.width * 0.07, height: MediaQuery.of(context).size.width * 0.07, child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white),),) : Text("LOGIN"),
           textColor: Colors.white),
     );
 
@@ -110,7 +139,7 @@ class Login extends StatelessWidget {
       flex: 1,
       child: GestureDetector(
         child: Center(
-          child: Text("Non hai un account? Registrati!"),
+          child: Text('Non hai un account? Registrati!'),
         ),
         onTap: () {
           Navigator.push(
